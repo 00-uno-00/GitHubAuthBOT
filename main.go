@@ -22,8 +22,8 @@ var (
 	owner      = flag.String("owner", "00-uno-00", "owner of targeted repo.")
 	Permission = flag.String("Permission", "pull", "permission to give the user to the repo")
 
-	TG_GITHUB_API       = flag.String("TG_GITHUB_API", os.Getenv("TG_GITHUB_API"), "Telegram Bot API access token")
-	GITHUB_ACCESS_TOKEN = flag.String("GITHUB_ACCESS_TOKEN", os.Getenv("GITHUB_ACCESS_TOKEN"), "Github personal access token")
+	TG_GITHUB_API       = flag.String("GAB_TG_GITHUB_API", os.Getenv("TG_GITHUB_API"), "Telegram Bot API access token")
+	GITHUB_ACCESS_TOKEN = flag.String("GAB_GITHUB_ACCESS_TOKEN", os.Getenv("GITHUB_ACCESS_TOKEN"), "Github personal access token")
 )
 
 type state struct {
@@ -35,10 +35,6 @@ type syncMap struct {
 	data map[int64]state
 	m    sync.Mutex
 }
-
-// /start gsora me@gsora.xyz
-// /email
-// /username
 
 func (s *syncMap) get(id int64) (state, error) {
 	s.m.Lock()

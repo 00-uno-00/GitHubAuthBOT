@@ -4,13 +4,12 @@ go 1.19
 
 require (
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
-	github.com/google/go-github/v48 v48.2.0
+	github.com/google/go-github/v50 v50.0.0
 	golang.org/x/oauth2 v0.5.0
 )
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-github/v50 v50.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
