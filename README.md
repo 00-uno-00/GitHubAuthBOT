@@ -1,6 +1,6 @@
 # GitHubAuthBot
 
-A simple telegram bot to automate the process of adding collaborators to different repositories, created with the objective of distributing university notes /without distributing material to outsiders therefore breaching copyright/only between the intended users.
+A simple telegram bot to automate the process of adding collaborators to different repositories, created with the objective of distributing university notes only between the intended users.
 
 ## Setup and Deployment
 
