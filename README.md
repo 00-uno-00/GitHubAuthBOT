@@ -26,4 +26,6 @@ go build
 should get the bot started.
 ## TODO
 
-- Add function and relative bot command to list all of the owner's repositories the user has access to
+- [x] Add function and relative bot command to list all of the owner's repositories the user has access to
+
+- [ ] Add 2FA to verify the provided email

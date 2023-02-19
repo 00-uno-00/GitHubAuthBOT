@@ -18,12 +18,13 @@ import (
 var (
 	bot *tgbotapi.BotAPI
 
-	name       = flag.String("name", "", "repo to change Actions permissions.")
 	owner      = flag.String("owner", "00-uno-00", "owner of targeted repo.")
 	Permission = flag.String("Permission", "pull", "permission to give the user to the repo")
 
 	TG_GITHUB_API       = flag.String("GAB_TG_GITHUB_API", os.Getenv("TG_GITHUB_API"), "Telegram Bot API access token")
 	GITHUB_ACCESS_TOKEN = flag.String("GAB_GITHUB_ACCESS_TOKEN", os.Getenv("GITHUB_ACCESS_TOKEN"), "Github personal access token")
+
+	REPOS = [2]string{"UniProjects", "Archelab"}
 )
 
 type state struct {
@@ -150,7 +151,7 @@ func hCommand(chatId int64, command string, arguments []string, s *syncMap) erro
 	case "verifica":
 		hVerifica(arguments, chatId, s)
 	case "accessi":
-		//TODO
+		hAccessi(chatId, s)
 	case "accedi":
 		handleAccedi(chatId, arguments, s)
 	case "aggiorna":
@@ -241,11 +242,10 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 	client := github.NewClient(tc)
 	switch strings.ToLower(args[0]) {
 	case "archelab":
-		*name = "ArchElab"
-		if !checkCollaborator(*client, user.ghusername) {
+		if !checkCollaborator(*client, user.ghusername, "ArchElab") {
 			log.Println("Adding collaborator...")
-			if addCollaborator(*client, user.ghusername) != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername))
+			if addCollaborator(*client, user.ghusername, "ArchElab") != "201 Created" {
+				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "ArchElab"))
 				bot.Send(msg)
 				return
 			}
@@ -256,10 +256,9 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 			bot.Send(msg)
 		}
 	case "uniprojects":
-		*name = "UniProjects"
-		if !checkCollaborator(*client, user.ghusername) {
-			if addCollaborator(*client, user.ghusername) != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername))
+		if !checkCollaborator(*client, user.ghusername, "UniProjects") {
+			if addCollaborator(*client, user.ghusername, "UniProjects") != "201 Created" {
+				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "UniProjects"))
 				bot.Send(msg)
 				return
 			}
@@ -277,16 +276,43 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 
 }
 
-func checkCollaborator(client github.Client, ghusername string) bool {
-	ret, resp, err := client.Repositories.IsCollaborator(context.Background(), *owner, *name, ghusername)
+func hAccessi(chatID int64, s *syncMap) {
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: *GITHUB_ACCESS_TOKEN},
+	)
+
+	tc := oauth2.NewClient(context.Background(), ts)
+
+	client := github.NewClient(tc)
+
+	user, err := s.get(chatID)
+	if err == nil {
+		collaborates := []string{}
+		for _, r := range REPOS {
+			if checkCollaborator(*client, user.ghusername, r) {
+				collaborates = append(collaborates, r)
+			}
+		}
+		repolist := strings.Join(collaborates, ", ")
+		msg := tgbotapi.NewMessage(chatID, "Repositories a cui hai accesso: "+repolist)
+		bot.Send(msg)
+	} else if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Utente non verificato")
+		bot.Send(msg)
+	}
+
+}
+
+func checkCollaborator(client github.Client, ghusername, RepoName string) bool {
+	ret, resp, err := client.Repositories.IsCollaborator(context.Background(), *owner, RepoName, ghusername)
 	if err != nil {
 		log.Println("errore: " + resp.Response.Status + "   " + err.Error())
 	}
 	return ret
 }
 
-func addCollaborator(client github.Client, ghusername string) string {
-	out, resp, err := client.Repositories.AddCollaborator(context.Background(), *owner, *name, ghusername, &github.RepositoryAddCollaboratorOptions{Permission: "pull"})
+func addCollaborator(client github.Client, ghusername, RepoName string) string {
+	out, resp, err := client.Repositories.AddCollaborator(context.Background(), *owner, RepoName, ghusername, &github.RepositoryAddCollaboratorOptions{Permission: "pull"})
 	if err != nil {
 		log.Println("errore: " + resp.Response.Status + "   " + err.Error())
 		return resp.Response.Status
