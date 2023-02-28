@@ -23,17 +23,14 @@ FROM debian:buster
 COPY --from=builder /user/group /user/passwd /etc/
 
 # Copy the built executable
-COPY --from=builder /go/bin/GitHubAuthBOT /home/GitHubAuthBOT
+COPY --from=builder /go/bin/GitHubAuthBOT /GitHubAuthBOT
 
 # Install dependencies and create home directory
 RUN apt update && apt install -y ca-certificates; \ 
-    chown -R GitHubAuthBOT /home/GitHubAuthBOT
-
-# Set the workdir
-WORKDIR /home/GitHubAuthBOT
+    chown -R GitHubAuthBOT /GitHubAuthBOT
 
 # Perform any further action as an unprivileged user.
 USER GitHubAuthBOT:GitHubAuthBOT
 
 # Run the compiled binary.
-CMD ["./GitHubAuthBOT"]
+CMD ["/GitHubAuthBOT"]

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"flag"
 	"log"
 	"os"
 	"strings"
@@ -18,11 +17,11 @@ import (
 var (
 	bot *tgbotapi.BotAPI
 
-	owner      = flag.String("owner", "00-uno-00", "owner of targeted repo.")
-	Permission = flag.String("Permission", "pull", "permission to give the user to the repo")
+	owner      = "00-uno-00"
+	Permission = "pull"
 
-	TG_GITHUB_API       = flag.String("GAB_TG_GITHUB_API", os.Getenv("TG_GITHUB_API"), "Telegram Bot API access token")
-	GITHUB_ACCESS_TOKEN = flag.String("GAB_GITHUB_ACCESS_TOKEN", os.Getenv("GITHUB_ACCESS_TOKEN"), "Github personal access token")
+	TG_GITHUB_API       = os.Getenv("TG_GITHUB_API")
+	GITHUB_ACCESS_TOKEN = os.Getenv("GITHUB_ACCESS_TOKEN")
 
 	REPOS = [2]string{"UniProjects", "Archelab"}
 )
@@ -60,7 +59,7 @@ func (s *syncMap) set(id int64, ns state) {
 func main() {
 	var err error
 
-	bot, err = tgbotapi.NewBotAPI(*TG_GITHUB_API)
+	bot, err = tgbotapi.NewBotAPI(TG_GITHUB_API)
 	if err != nil {
 		// Abort if something is wrong
 		log.Panic(err)
@@ -234,7 +233,7 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 	}
 
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: *GITHUB_ACCESS_TOKEN},
+		&oauth2.Token{AccessToken: GITHUB_ACCESS_TOKEN},
 	)
 
 	tc := oauth2.NewClient(context.Background(), ts)
@@ -278,7 +277,7 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 
 func hAccessi(chatID int64, s *syncMap) {
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: *GITHUB_ACCESS_TOKEN},
+		&oauth2.Token{AccessToken: GITHUB_ACCESS_TOKEN},
 	)
 
 	tc := oauth2.NewClient(context.Background(), ts)
@@ -304,7 +303,7 @@ func hAccessi(chatID int64, s *syncMap) {
 }
 
 func checkCollaborator(client github.Client, ghusername, RepoName string) bool {
-	ret, resp, err := client.Repositories.IsCollaborator(context.Background(), *owner, RepoName, ghusername)
+	ret, resp, err := client.Repositories.IsCollaborator(context.Background(), owner, RepoName, ghusername)
 	if err != nil {
 		log.Println("errore: " + resp.Response.Status + "   " + err.Error())
 	}
@@ -312,7 +311,7 @@ func checkCollaborator(client github.Client, ghusername, RepoName string) bool {
 }
 
 func addCollaborator(client github.Client, ghusername, RepoName string) string {
-	out, resp, err := client.Repositories.AddCollaborator(context.Background(), *owner, RepoName, ghusername, &github.RepositoryAddCollaboratorOptions{Permission: "pull"})
+	out, resp, err := client.Repositories.AddCollaborator(context.Background(), owner, RepoName, ghusername, &github.RepositoryAddCollaboratorOptions{Permission: "pull"})
 	if err != nil {
 		log.Println("errore: " + resp.Response.Status + "   " + err.Error())
 		return resp.Response.Status
