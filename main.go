@@ -23,7 +23,7 @@ var (
 	TG_GITHUB_API       = os.Getenv("GAB_TG_GITHUB_API")
 	GITHUB_ACCESS_TOKEN = os.Getenv("GAB_GITHUB_ACCESS_TOKEN")
 
-	REPOS = [2]string{"UniProjects", "Archelab"}
+	REPOS = []string{"lft_lab", "archelab", "prog1", "prog2"}
 )
 
 type state struct {
@@ -239,68 +239,28 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 	tc := oauth2.NewClient(context.Background(), ts)
 
 	client := github.NewClient(tc)
-	switch strings.ToLower(args[0]) {
-	case "archelab":
-		if !checkCollaborator(*client, user.ghusername, "ArchElab") {
-			log.Println("Adding collaborator...")
-			if addCollaborator(*client, user.ghusername, "ArchElab") != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "ArchElab"))
+	for i := 0; i < len(REPOS); i++ {
+		if strings.EqualFold(args[0], REPOS[i]) {
+			if !checkCollaborator(*client, user.ghusername, REPOS[i]) {
+				log.Println("Adding collaborator...")
+				if addCollaborator(*client, user.ghusername, REPOS[i]) != "201 Created" {
+					msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, REPOS[i]))
+					bot.Send(msg)
+					return
+				}
+				msg := tgbotapi.NewMessage(chatID, "Invito inviato")
 				bot.Send(msg)
-				return
-			}
-			msg := tgbotapi.NewMessage(chatID, "Invito inviato")
-			bot.Send(msg)
-		} else {
-			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
-			bot.Send(msg)
-		}
-	case "prog1":
-		if !checkCollaborator(*client, user.ghusername, "Prog1") {
-			if addCollaborator(*client, user.ghusername, "Prog1") != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "Prog1"))
+			} else {
+				msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
 				bot.Send(msg)
-				return
 			}
-			msg := tgbotapi.NewMessage(chatID, "Invito inviato")
-			bot.Send(msg)
 			return
-		} else {
-			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
+		}
+		if i == len(REPOS)+1 {
+			msg := tgbotapi.NewMessage(chatID, "Repo Invalida")
 			bot.Send(msg)
 		}
-	case "prog2":
-		if !checkCollaborator(*client, user.ghusername, "Prog2") {
-			if addCollaborator(*client, user.ghusername, "Prog2") != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "Prog2"))
-				bot.Send(msg)
-				return
-			}
-			msg := tgbotapi.NewMessage(chatID, "Invito inviato")
-			bot.Send(msg)
-			return
-		} else {
-			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
-			bot.Send(msg)
-		}
-	case "lft_lab":
-		if !checkCollaborator(*client, user.ghusername, "LFT_Lab") {
-			if addCollaborator(*client, user.ghusername, "LFT_Lab") != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "LFT_Lab"))
-				bot.Send(msg)
-				return
-			}
-			msg := tgbotapi.NewMessage(chatID, "Invito inviato")
-			bot.Send(msg)
-			return
-		} else {
-			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
-			bot.Send(msg)
-		}
-	default:
-		msg := tgbotapi.NewMessage(chatID, "Repo Invalida")
-		bot.Send(msg)
 	}
-
 }
 
 func hAccessi(chatID int64, s *syncMap) {
