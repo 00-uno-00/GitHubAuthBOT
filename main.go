@@ -20,8 +20,8 @@ var (
 	owner      = "00-uno-00"
 	Permission = "pull"
 
-	TG_GITHUB_API       = os.Getenv("TG_GITHUB_API")
-	GITHUB_ACCESS_TOKEN = os.Getenv("GITHUB_ACCESS_TOKEN")
+	TG_GITHUB_API       = os.Getenv("GAB_TG_GITHUB_API")
+	GITHUB_ACCESS_TOKEN = os.Getenv("GAB_GITHUB_ACCESS_TOKEN")
 
 	REPOS = [2]string{"UniProjects", "Archelab"}
 )
