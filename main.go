@@ -254,10 +254,38 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
 			bot.Send(msg)
 		}
-	case "uniprojects":
-		if !checkCollaborator(*client, user.ghusername, "UniProjects") {
-			if addCollaborator(*client, user.ghusername, "UniProjects") != "201 Created" {
-				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "UniProjects"))
+	case "prog1":
+		if !checkCollaborator(*client, user.ghusername, "Prog1") {
+			if addCollaborator(*client, user.ghusername, "Prog1") != "201 Created" {
+				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "Prog1"))
+				bot.Send(msg)
+				return
+			}
+			msg := tgbotapi.NewMessage(chatID, "Invito inviato")
+			bot.Send(msg)
+			return
+		} else {
+			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
+			bot.Send(msg)
+		}
+	case "prog2":
+		if !checkCollaborator(*client, user.ghusername, "Prog2") {
+			if addCollaborator(*client, user.ghusername, "Prog2") != "201 Created" {
+				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "Prog2"))
+				bot.Send(msg)
+				return
+			}
+			msg := tgbotapi.NewMessage(chatID, "Invito inviato")
+			bot.Send(msg)
+			return
+		} else {
+			msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
+			bot.Send(msg)
+		}
+	case "lft_lab":
+		if !checkCollaborator(*client, user.ghusername, "LFT_Lab") {
+			if addCollaborator(*client, user.ghusername, "LFT_Lab") != "201 Created" {
+				msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, "LFT_Lab"))
 				bot.Send(msg)
 				return
 			}
