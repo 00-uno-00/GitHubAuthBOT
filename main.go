@@ -227,7 +227,8 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 		bot.Send(msg)
 		return
 	} else if len(args) == 0 {
-		msg := tgbotapi.NewMessage(chatID, "Sintassi comando: /accedi <RepoName>  Elenco delle repository: \n -ArchElab \n -UniProjects(Prog1, Prog2, LFT)")
+		rlist := strings.Join(REPOS, " \n -")
+		msg := tgbotapi.NewMessage(chatID, "Sintassi comando: /accedi <RepoName>  Elenco delle repository: \n -"+rlist)
 		bot.Send(msg)
 		return
 	}
