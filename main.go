@@ -5,9 +5,15 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math"
+	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"gopkg.in/gomail.v2"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/go-github/v50/github"
@@ -23,12 +29,19 @@ var (
 	TG_GITHUB_API       = os.Getenv("GAB_TG_GITHUB_API")
 	GITHUB_ACCESS_TOKEN = os.Getenv("GAB_GITHUB_ACCESS_TOKEN")
 
+	SMPT_HOST      = os.Getenv("GAB_SMTP_HOST")
+	SMTP_PORT, _   = strconv.Atoi(os.Getenv("GAB_SMTP_PORT"))
+	EMAIL_USERNAME = os.Getenv("GAB_EMAIL_USERNAME")
+	EMAIL_PASSW    = os.Getenv("GAB_EMAIL_PASSW")
+	ch             = make(chan *gomail.Message)
+
 	REPOS = []string{"lft_lab", "archelab", "prog1", "prog2"}
 )
 
 type state struct {
 	address    string
 	ghusername string
+	verified   bool
 }
 
 type syncMap struct {
@@ -65,6 +78,11 @@ func main() {
 		log.Panic(err)
 	}
 
+	// Set up new email dialer
+	dialer := gomail.NewDialer(SMPT_HOST, SMTP_PORT, EMAIL_USERNAME, EMAIL_PASSW)
+
+	go emailSender(dialer)
+
 	s := syncMap{map[int64]state{}, sync.Mutex{}}
 
 	// Set this to true to log all interactions with telegram servers
@@ -95,7 +113,6 @@ func main() {
 }
 
 func receiveUpdates(ctx context.Context, updates tgbotapi.UpdatesChannel, s *syncMap) {
-	// `for {` means the loop is infinite until we manually stop it
 	for {
 		select {
 		// stop looping if ctx is cancelled
@@ -127,6 +144,8 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap) {
 		args := strings.Fields(message.CommandArguments())
 		log.Println("command:", command)
 		hCommand(user.ID, command, args, s)
+	} else if _, err := strconv.Atoi(message.Text); err == nil {
+		//code check
 	} else {
 		msg := tgbotapi.NewMessage(user.ID, "invalid message")
 		bot.Send(msg)
@@ -137,7 +156,6 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap) {
 	}
 }
 
-// When we get a command, we react accordingly
 func hCommand(chatId int64, command string, arguments []string, s *syncMap) error {
 	switch command {
 	case "menu": // etc
@@ -176,11 +194,8 @@ func hVerifica(args []string, chatID int64, s *syncMap) {
 	user, err := s.get(chatID)
 	if err != nil {
 		if strings.HasSuffix(args[1], "@unito.it") || strings.HasSuffix(args[1], "@edu.unito.it") {
-			state := state{args[1], args[0]}
-			s.set(chatID, state)
-			user, _ = s.get(chatID)
-			msg := tgbotapi.NewMessage(chatID, "Utente verificato "+user.ghusername)
-			bot.Send(msg)
+			go auth(chatID, args, s)
+
 			return
 		} else {
 			msg := tgbotapi.NewMessage(chatID, "email invalida")
@@ -195,7 +210,6 @@ func hVerifica(args []string, chatID int64, s *syncMap) {
 		msg = tgbotapi.NewMessage(chatID, "user: "+user.ghusername)
 		bot.Send(msg)
 	}
-
 }
 
 func handleAggiorna(args []string, chatID int64, s *syncMap) {
@@ -206,7 +220,7 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 	}
 
 	if strings.HasSuffix(args[1], "@unito.it") || strings.HasSuffix(args[1], "@edu.unito.it") {
-		state := state{args[1], args[0]}
+		state := state{args[1], args[0], true}
 		s.set(chatID, state)
 		user, _ := s.get(chatID)
 		msg := tgbotapi.NewMessage(chatID, "Dati aggiornati: "+user.ghusername)
@@ -217,7 +231,6 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 		bot.Send(msg)
 		return
 	}
-
 }
 
 func handleAccedi(chatID int64, args []string, s *syncMap) {
@@ -307,4 +320,69 @@ func addCollaborator(client github.Client, ghusername, RepoName string) string {
 	}
 	log.Printf("url:" + *out.URL)
 	return resp.Response.Status
+}
+
+func emailSender(dialer *gomail.Dialer) {
+	var s gomail.SendCloser
+	var err error
+	open := false
+
+	for {
+		select {
+		case m, ok := <-ch:
+			if !ok {
+				return
+			}
+			if !open {
+				if s, err = dialer.Dial(); err != nil {
+					panic(err)
+				}
+				open = true
+			}
+			if err := gomail.Send(s, m); err != nil {
+				log.Print(err)
+			}
+		case <-time.After(15 * time.Second):
+			if open {
+				if err := s.Close(); err != nil {
+					panic(err)
+				}
+				open = false
+			}
+		}
+	}
+}
+
+func codeGenerator() int {
+	code := rand.Intn(999999)
+	if code%2 == 0 {
+		return int(math.Sqrt(float64(code)))
+	}
+	return (code + 1) / 2
+}
+
+func auth(chatID int64, args []string, s *syncMap) bool {
+	email := mailCreator(chatID, s)
+	ch <- email
+	msg := tgbotapi.NewMessage(chatID, "Ti è stata inviata una mail con il codice di verifica")
+	bot.Send(msg)
+	for {
+		user, _ := s.get(chatID)
+		if user.verified {
+			state := state{args[1], args[0], true}
+			s.set(chatID, state)
+			return true
+		}
+		time.After(30)
+	}
+}
+
+func mailCreator(chatID int64, s *syncMap) *gomail.Message {
+	user, _ := s.get(chatID)
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", EMAIL_USERNAME)
+	msg.SetHeader("To", user.address)
+	msg.SetHeader("Subject", "Codice di verifica per accesso repository GitHub")
+	msg.SetBody("text/html", "<\b>test<\b>")
+	return msg
 }
