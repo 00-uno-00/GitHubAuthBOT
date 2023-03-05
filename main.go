@@ -214,7 +214,7 @@ func hVerifica(args []string, chatID int64, s *syncMap) {
 			bot.Send(msg)
 			return
 		}
-	} else {
+	} else if user.verified {
 		msg := tgbotapi.NewMessage(chatID, "Utente gia' verificato, per aggiornare usa /aggiorna <username> <example@email.xyz> ")
 		bot.Send(msg)
 		msg = tgbotapi.NewMessage(chatID, "email: "+user.address)
@@ -232,11 +232,15 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 	}
 	user, _ := s.get(chatID)
 
-	if strings.HasSuffix(args[1], "@unito.it") && user.verified || strings.HasSuffix(args[1], "@edu.unito.it") && user.verified {
+	if (strings.HasSuffix(args[1], "@unito.it") || strings.HasSuffix(args[1], "@edu.unito.it")) && user.verified {
 		state := state{args[1], args[0], true}
 		s.set(chatID, state)
 		user, _ = s.get(chatID)
 		msg := tgbotapi.NewMessage(chatID, "Dati aggiornati: "+user.ghusername)
+		bot.Send(msg)
+		return
+	} else if !user.verified {
+		msg := tgbotapi.NewMessage(chatID, "verifica non effettuata")
 		bot.Send(msg)
 		return
 	} else {
@@ -248,7 +252,7 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 
 func handleAccedi(chatID int64, args []string, s *syncMap) {
 	user, err := s.get(chatID)
-	if err != nil {
+	if !user.verified || err != nil {
 		msg := tgbotapi.NewMessage(chatID, "verifica non effettuata")
 		bot.Send(msg)
 		return
@@ -369,7 +373,7 @@ func emailSender(dialer *gomail.Dialer) {
 func codeGenerator() int {
 	code := rand.Intn(999999)
 	if code%2 == 0 {
-		return int(math.Sqrt(float64(code)))
+		return int(math.Exp(float64(code)))
 	}
 	return (code + 1) / 2
 }
@@ -386,7 +390,7 @@ func auth(chatID int64, args []string, s *syncMap) bool {
 	for {
 		user, _ := s.get(chatID)
 		if user.verified {
-			log.Println("user verified" + user.ghusername)
+			log.Println("user verified: " + user.ghusername)
 			return true
 		}
 		time.Sleep(15 * time.Second)

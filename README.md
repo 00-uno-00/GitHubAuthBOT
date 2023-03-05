@@ -11,11 +11,19 @@ Before building and executing the code it's necessary to set up said enviornment
 Having obtained both tokens you can set up the envoirnment variables with the following commands in your terminal. 
 
 ```bash
-env export GAB_TG_GITHUB_API=<your telegram HTTP API access token>
+env export GAB_TG_GITHUB_API         = <your telegram HTTP API access token>
+
+env export GAB_GITHUB_ACCESS_TOKEN   = <your GitHub HTTP API access token>
 ```
 
 ```bash
-env export GAB_GITHUB_ACCESS_TOKEN=<your GitHub HTTP API access token>
+env export GAB_EMAIL_PASSW           = <your email password>
+
+env export GAB_EMAIL_USERNAME        = <your email username>
+
+env export GAB_SMTP_PORT             = <your smtp port>
+
+env export GAB_SMTP_HOST             = <your smtp host>
 ```
 (you can use `env` to check if they have been set up correctly)
 
@@ -28,4 +36,4 @@ should get the bot started.
 
 - [x] Add function and relative bot command to list all of the owner's repositories the user has access to
 
-- [ ] Add 2FA to verify the provided email
+- [x] Add 2FA to verify the provided email
