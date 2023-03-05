@@ -36,6 +36,8 @@ var (
 	ch             = make(chan *gomail.Message)
 
 	REPOS = []string{"lft_lab", "archelab", "prog1", "prog2"}
+
+	CODES = []int{}
 )
 
 type state struct {
@@ -144,8 +146,19 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap) {
 		args := strings.Fields(message.CommandArguments())
 		log.Println("command:", command)
 		hCommand(user.ID, command, args, s)
-	} else if _, err := strconv.Atoi(message.Text); err == nil {
-		//code check
+	} else if code, err := strconv.Atoi(message.Text); err == nil {
+		for _, v := range CODES {
+			if code == v {
+				verifieduser, err := s.get(user.ID)
+				if err != nil {
+					log.Println("unexpected error")
+					return
+				}
+				verifiedState := state{verifieduser.address, verifieduser.ghusername, true}
+				s.set(user.ID, verifiedState)
+			}
+		}
+		return
 	} else {
 		msg := tgbotapi.NewMessage(user.ID, "invalid message")
 		bot.Send(msg)
@@ -195,7 +208,6 @@ func hVerifica(args []string, chatID int64, s *syncMap) {
 	if err != nil {
 		if strings.HasSuffix(args[1], "@unito.it") || strings.HasSuffix(args[1], "@edu.unito.it") {
 			go auth(chatID, args, s)
-
 			return
 		} else {
 			msg := tgbotapi.NewMessage(chatID, "email invalida")
@@ -218,11 +230,12 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 		bot.Send(msg)
 		return
 	}
+	user, _ := s.get(chatID)
 
-	if strings.HasSuffix(args[1], "@unito.it") || strings.HasSuffix(args[1], "@edu.unito.it") {
+	if strings.HasSuffix(args[1], "@unito.it") && user.verified || strings.HasSuffix(args[1], "@edu.unito.it") && user.verified {
 		state := state{args[1], args[0], true}
 		s.set(chatID, state)
-		user, _ := s.get(chatID)
+		user, _ = s.get(chatID)
 		msg := tgbotapi.NewMessage(chatID, "Dati aggiornati: "+user.ghusername)
 		bot.Send(msg)
 		return
@@ -362,27 +375,30 @@ func codeGenerator() int {
 }
 
 func auth(chatID int64, args []string, s *syncMap) bool {
-	email := mailCreator(chatID, s)
+	state := state{args[1], args[0], false}
+	s.set(chatID, state)
+	code := codeGenerator()
+	CODES = append(CODES, code)
+	email := mailCreator(chatID, s, strconv.Itoa(code))
 	ch <- email
 	msg := tgbotapi.NewMessage(chatID, "Ti è stata inviata una mail con il codice di verifica")
 	bot.Send(msg)
 	for {
 		user, _ := s.get(chatID)
 		if user.verified {
-			state := state{args[1], args[0], true}
-			s.set(chatID, state)
+			log.Println("user verified" + user.ghusername)
 			return true
 		}
-		time.After(30)
+		time.Sleep(15 * time.Second)
 	}
 }
 
-func mailCreator(chatID int64, s *syncMap) *gomail.Message {
+func mailCreator(chatID int64, s *syncMap, code string) *gomail.Message {
 	user, _ := s.get(chatID)
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", EMAIL_USERNAME)
 	msg.SetHeader("To", user.address)
 	msg.SetHeader("Subject", "Codice di verifica per accesso repository GitHub")
-	msg.SetBody("text/html", "<\b>test<\b>")
+	msg.SetBody("text/html", code+" ")
 	return msg
 }
