@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	cr "crypto/rand"
 	"encoding/base64"
@@ -124,13 +125,16 @@ func main() {
 
 	// Create a new cancellable background context. Calling `cancel()` leads to the cancellation of the context
 	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
 
 	// `updates` is a golang channel which receives telegram updates
 	updates := bot.GetUpdatesChan(u)
 
 	// Pass cancellable context to goroutine
-	go receiveUpdates(ctx, updates, &s, &h) //newcontext for each routine?
+	go receiveUpdates(ctx, updates, &s, &h)
 
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	cancel()
 }
 
 func receiveUpdates(ctx context.Context, updates tgbotapi.UpdatesChannel, s *syncMap, h *syncHash) {
