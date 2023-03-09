@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"context"
+	cr "crypto/rand"
+	"encoding/base64"
 	"errors"
 	"log"
-	"math"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -54,7 +53,7 @@ type syncMap struct {
 }
 
 type syncHash struct {
-	CODES map[int64]int
+	CODES map[int64]string
 	m     sync.Mutex
 }
 
@@ -77,24 +76,21 @@ func (s *syncMap) set(id int64, ns state) {
 	log.Println("set data")
 }
 
-func (h *syncHash) setH(id int64, code int) {
+func (h *syncHash) setH(id int64, code string) {
 	h.m.Lock()
 	defer h.m.Unlock()
 	h.CODES[id] = code
 	log.Println("set code")
 }
 
-func (h *syncHash) getH(id int64, code int) bool {
+func (h *syncHash) deleteH(id int64, code string) bool {
 	h.m.Lock()
 	defer h.m.Unlock()
 	h.CODES[id] = code
-	log.Println("set code")
 	if code == h.CODES[id] {
 		delete(h.CODES, id)
+		log.Println("Verified code has been removed")
 		return true
-	} else if h.CODES[id] == 0 {
-		log.Println("key not present")
-		return false
 	} else {
 		log.Println("wrong key")
 		return false
@@ -118,7 +114,7 @@ func main() {
 	//syncMaps
 	s := syncMap{map[int64]state{}, sync.Mutex{}}
 
-	h := syncHash{map[int64]int{}, sync.Mutex{}}
+	h := syncHash{map[int64]string{}, sync.Mutex{}}
 
 	// Set this to true to log all interactions with telegram servers
 	bot.Debug = false
@@ -128,22 +124,12 @@ func main() {
 
 	// Create a new cancellable background context. Calling `cancel()` leads to the cancellation of the context
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
 
 	// `updates` is a golang channel which receives telegram updates
 	updates := bot.GetUpdatesChan(u)
 
-	//initaial message
-
 	// Pass cancellable context to goroutine
 	go receiveUpdates(ctx, updates, &s, &h) //newcontext for each routine?
-
-	// Tell the user the bot is online
-	log.Println("Start listening for updates. Press enter to stop")
-
-	// Wait for a newline symbol, then cancel handling updates
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
-	cancel()
 
 }
 
@@ -179,8 +165,8 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap, h
 		args := strings.Fields(message.CommandArguments())
 		log.Println("command:", command)
 		hCommand(user.ID, command, args, s, h)
-	} else if code, err := strconv.Atoi(message.Text); err == nil {
-		if h.getH(user.ID, code) {
+	} else if code := message.Text; err == nil {
+		if h.deleteH(user.ID, code) {
 			verifieduser, err := s.get(user.ID)
 			if err != nil {
 				log.Println("unexpected error")
@@ -191,8 +177,7 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap, h
 		}
 		return
 	} else {
-		msg := tgbotapi.NewMessage(user.ID, "invalid message")
-		bot.Send(msg)
+		sendMsg(user.ID, "invalid message")
 	}
 
 	if err != nil {
@@ -200,29 +185,27 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap, h
 	}
 }
 
-func hCommand(chatId int64, command string, arguments []string, s *syncMap, h *syncHash) error {
+func hCommand(chatID int64, command string, arguments []string, s *syncMap, h *syncHash) error {
 	switch command {
-	case "menu": // etc
-		msg := tgbotapi.NewMessage(chatId, "I comandi disponibili sono: \n /verifica <username> <example@email.xyz> - verifica se puoi accedere alle repository \n /accedi <nome repo> - seleziona la repository a cui vuoi avere accesso \n /accessi - elenco degli accessi alle repository \n /gsora - colui che fornisce la VPS")
-		bot.Send(msg)
+	case "menu":
+		sendMsg(chatID, "I comandi disponibili sono: \n /verifica <username> <example@email.xyz> - verifica se puoi accedere alle repository \n /accedi <nome repo> - seleziona la repository a cui vuoi avere accesso \n /accessi - elenco degli accessi alle repository \n /gsora - colui che fornisce la VPS")
 		log.Println("menu")
 	case "gsora":
-		msg := tgbotapi.NewMessage(chatId, "gsora amico delle guardie (More info at: https://noskills.club)")
-		bot.Send(msg)
+		sendMsg(chatID, "gsora amico delle guardie (More info at: https://noskills.club)")
 	case "verifica":
-		hVerifica(arguments, chatId, s, h)
+		hVerifica(arguments, chatID, s, h)
 	case "accessi":
-		hAccessi(chatId, s)
+		hAccessi(chatID, s)
 	case "accedi":
-		handleAccedi(chatId, arguments, s)
+		handleAccedi(chatID, arguments, s)
 	case "aggiorna":
-		handleAggiorna(arguments, chatId, s)
+		handleAggiorna(arguments, chatID, s)
+	case "info":
+		sendMsg(chatID, "Per avere piu' info rispetto a questo bot visita: https://github.com/00-uno-00/GitHubAuthBOT")
 	case "start":
-		msg := tgbotapi.NewMessage(chatId, "Scrivi /menu per vedere i comandi disponibili")
-		bot.Send(msg)
+		sendMsg(chatID, "Scrivi /menu per vedere i comandi disponibili")
 	default:
-		msg := tgbotapi.NewMessage(chatId, "Comando non riconosciuto")
-		bot.Send(msg)
+		sendMsg(chatID, "Comando non riconosciuto")
 	}
 
 	return nil
@@ -230,8 +213,7 @@ func hCommand(chatId int64, command string, arguments []string, s *syncMap, h *s
 
 func hVerifica(args []string, chatID int64, s *syncMap, h *syncHash) {
 	if len(args) < 2 {
-		msg := tgbotapi.NewMessage(chatID, "inserisci comando con username GitHub e Mail (/verifica <username> <example@email.xyz>)")
-		bot.Send(msg)
+		sendMsg(chatID, "inserisci comando con username GitHub e Mail (/verifica <username> <example@email.xyz>)")
 		return
 	}
 
@@ -241,24 +223,19 @@ func hVerifica(args []string, chatID int64, s *syncMap, h *syncHash) {
 			go auth(chatID, args, s, h)
 			return
 		} else {
-			msg := tgbotapi.NewMessage(chatID, "email invalida")
-			bot.Send(msg)
+			sendMsg(chatID, "Email invalida")
 			return
 		}
 	} else if user.verified {
-		msg := tgbotapi.NewMessage(chatID, "Utente gia' verificato, per aggiornare usa /aggiorna <username> <example@email.xyz> ")
-		bot.Send(msg)
-		msg = tgbotapi.NewMessage(chatID, "email: "+user.address)
-		bot.Send(msg)
-		msg = tgbotapi.NewMessage(chatID, "user: "+user.ghusername)
-		bot.Send(msg)
+		sendMsg(chatID, "Utente gia' verificato, per aggiornare usa /aggiorna <username> <example@email.xyz> ")
+		sendMsg(chatID, "email: "+user.address)
+		sendMsg(chatID, "user: "+user.ghusername)
 	}
 }
 
 func handleAggiorna(args []string, chatID int64, s *syncMap) {
 	if len(args) < 2 {
-		msg := tgbotapi.NewMessage(chatID, "Inserisci comando con username GitHub e Mail (/aggiorna <username> <example@email.xyz>)")
-		bot.Send(msg)
+		sendMsg(chatID, "Inserisci comando con username GitHub e Mail (/aggiorna <username> <example@email.xyz>)")
 		return
 	}
 	user, _ := s.get(chatID)
@@ -267,16 +244,13 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 		state := state{args[1], args[0], true}
 		s.set(chatID, state)
 		user, _ = s.get(chatID)
-		msg := tgbotapi.NewMessage(chatID, "Dati aggiornati: "+user.ghusername)
-		bot.Send(msg)
+		sendMsg(chatID, "Dati aggiornati: "+user.ghusername)
 		return
 	} else if !user.verified {
-		msg := tgbotapi.NewMessage(chatID, "verifica non effettuata")
-		bot.Send(msg)
+		sendMsg(chatID, "verifica non effettuata")
 		return
 	} else {
-		msg := tgbotapi.NewMessage(chatID, "Email invalida")
-		bot.Send(msg)
+		sendMsg(chatID, "Email invalida")
 		return
 	}
 }
@@ -284,13 +258,11 @@ func handleAggiorna(args []string, chatID int64, s *syncMap) {
 func handleAccedi(chatID int64, args []string, s *syncMap) {
 	user, err := s.get(chatID)
 	if !user.verified || err != nil {
-		msg := tgbotapi.NewMessage(chatID, "verifica non effettuata")
-		bot.Send(msg)
+		sendMsg(chatID, "verifica non effettuata")
 		return
 	} else if len(args) == 0 {
 		rlist := strings.Join(REPOS, " \n -")
-		msg := tgbotapi.NewMessage(chatID, "Sintassi comando: /accedi <RepoName>  Elenco delle repository: \n -"+rlist)
-		bot.Send(msg)
+		sendMsg(chatID, "Sintassi comando: /accedi <RepoName>  Elenco delle repository: \n -"+rlist)
 		return
 	}
 
@@ -306,21 +278,17 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 			if !checkCollaborator(*client, user.ghusername, REPOS[i]) {
 				log.Println("Adding collaborator...")
 				if addCollaborator(*client, user.ghusername, REPOS[i]) != "201 Created" {
-					msg := tgbotapi.NewMessage(chatID, addCollaborator(*client, user.ghusername, REPOS[i]))
-					bot.Send(msg)
+					sendMsg(chatID, "errore: "+addCollaborator(*client, user.ghusername, REPOS[i]))
 					return
 				}
-				msg := tgbotapi.NewMessage(chatID, "Invito inviato")
-				bot.Send(msg)
+				sendMsg(chatID, "Invito inviato")
 			} else {
-				msg := tgbotapi.NewMessage(chatID, "Accesso gia' ottenuto")
-				bot.Send(msg)
+				sendMsg(chatID, "Accesso gia' ottenuto")
 			}
 			return
 		}
 		if i == len(REPOS)+1 {
-			msg := tgbotapi.NewMessage(chatID, "Repo Invalida")
-			bot.Send(msg)
+			sendMsg(chatID, "Repo Invalida")
 		}
 	}
 }
@@ -343,11 +311,9 @@ func hAccessi(chatID int64, s *syncMap) {
 			}
 		}
 		repolist := strings.Join(collaborates, ", ")
-		msg := tgbotapi.NewMessage(chatID, "Repositories a cui hai accesso: "+repolist)
-		bot.Send(msg)
+		sendMsg(chatID, "Repositories a cui hai accesso: "+repolist)
 	} else if err != nil {
-		msg := tgbotapi.NewMessage(chatID, "Utente non verificato")
-		bot.Send(msg)
+		sendMsg(chatID, "Utente non verificato")
 	}
 
 }
@@ -371,42 +337,32 @@ func addCollaborator(client github.Client, ghusername, RepoName string) string {
 }
 
 func emailSender(dialer *gomail.Dialer) {
-	var s gomail.SendCloser
-	var err error
-	open := false
+	for m := range ch {
+		var s gomail.SendCloser
+		var err error
+		open := false
 
-	for {
-		select {
-		case m, ok := <-ch:
-			if !ok {
-				return
+		if !open {
+			if s, err = dialer.Dial(); err != nil {
+				panic(err)
 			}
-			if !open {
-				if s, err = dialer.Dial(); err != nil {
-					panic(err)
-				}
-				open = true
-			}
-			if err := gomail.Send(s, m); err != nil {
-				log.Print(err)
-			}
-		case <-time.After(15 * time.Second):
-			if open {
-				if err := s.Close(); err != nil {
-					panic(err)
-				}
-				open = false
-			}
+			open = true
 		}
+		if err := gomail.Send(s, m); err != nil {
+			log.Print(err)
+		}
+
 	}
 }
 
-func codeGenerator() int {
-	code := rand.Intn(999999)
-	if code%2 == 0 {
-		return int(math.Sqrt((math.Exp(float64(code)))))
+func codeGenerator() string {
+	entropy := make([]byte, 8)
+
+	if _, err := cr.Read(entropy); err != nil {
+		panic(err)
 	}
-	return (code + 1) / 2
+
+	return base64.StdEncoding.EncodeToString(entropy)
 }
 
 func auth(chatID int64, args []string, s *syncMap, h *syncHash) bool {
@@ -416,19 +372,17 @@ func auth(chatID int64, args []string, s *syncMap, h *syncHash) bool {
 	code := codeGenerator()
 	h.setH(chatID, code)
 
-	ch <- mailCreator(chatID, s, strconv.Itoa(code))
+	ch <- mailCreator(chatID, s, code)
 
-	msg := tgbotapi.NewMessage(chatID, "Ti è stata inviata una mail con il codice di verifica")
-	bot.Send(msg)
+	sendMsg(chatID, "Ti è stata inviata una mail con il codice di verifica")
 	for {
 		user, _ := s.get(chatID)
 		if user.verified {
 			log.Println("user verified: " + user.ghusername)
-			msg = tgbotapi.NewMessage(chatID, "Utente verificato")
-			bot.Send(msg)
+			sendMsg(chatID, "Utente verificato")
 			return true
 		}
-		time.Sleep(15 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -440,4 +394,9 @@ func mailCreator(chatID int64, s *syncMap, code string) *gomail.Message {
 	msg.SetHeader("Subject", "Codice di `verifica `per accesso repository GitHub")
 	msg.SetBody("text/html", code+"\nSe non hai richiesto questo codice, puoi ignorare questo messaggio. Un altro utente potrebbe avere digitato il tuo indirizzo e-mail per errore.\nPer non ricevere ulteriori mail scrivi a questo indirizzo o su telegram a https://t.me/I00uno00I")
 	return msg
+}
+
+func sendMsg(chatID int64, msg string) {
+	smsg := tgbotapi.NewMessage(chatID, msg)
+	bot.Send(smsg)
 }
