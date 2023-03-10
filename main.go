@@ -395,8 +395,8 @@ func mailCreator(chatID int64, s *syncMap, code string) *gomail.Message {
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", EMAIL_USERNAME)
 	msg.SetHeader("To", user.address)
-	msg.SetHeader("Subject", "Codice di `verifica `per accesso repository GitHub")
-	msg.SetBody("text/html", code+"\nSe non hai richiesto questo codice, puoi ignorare questo messaggio. Un altro utente potrebbe avere digitato il tuo indirizzo e-mail per errore.\nPer non ricevere ulteriori mail scrivi a questo indirizzo o su telegram a https://t.me/I00uno00I")
+	msg.SetHeader("Subject", "Codice di verifica per accesso repository GitHub")
+	msg.SetBody("text/html", code+"\n Se non hai richiesto questo codice, puoi ignorare questo messaggio. Un altro utente potrebbe avere digitato il tuo indirizzo e-mail per errore.\nPer non ricevere ulteriori mail scrivi a questo indirizzo o su telegram a https://t.me/I00uno00I")
 	return msg
 }
 
