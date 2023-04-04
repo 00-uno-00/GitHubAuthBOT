@@ -87,7 +87,6 @@ func (h *syncHash) setH(id int64, code string) {
 func (h *syncHash) deleteH(id int64, code string) bool {
 	h.m.Lock()
 	defer h.m.Unlock()
-	h.CODES[id] = code
 	if code == h.CODES[id] {
 		delete(h.CODES, id)
 		log.Println("Verified code has been removed")
@@ -161,7 +160,7 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap, h
 	}
 
 	// Print to console
-	log.Println("handle message", text)
+	log.Println("handle message from:", user.UserName, ": ", text)
 	var err error
 
 	if message.IsCommand() {
@@ -169,8 +168,8 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap, h
 		args := strings.Fields(message.CommandArguments())
 		log.Println("command:", command)
 		hCommand(user.ID, command, args, s, h)
-	} else if code := message.Text; err == nil {
-		if h.deleteH(user.ID, code) {
+	} else if len(message.Text) == 12 {
+		if h.deleteH(user.ID, message.Text) {
 			verifieduser, err := s.get(user.ID)
 			if err != nil {
 				log.Println("unexpected error")
@@ -178,8 +177,9 @@ func handleMessage(ctx context.Context, message *tgbotapi.Message, s *syncMap, h
 			}
 			verifiedState := state{verifieduser.address, verifieduser.ghusername, true}
 			s.set(user.ID, verifiedState)
+			return
 		}
-		return
+		sendMsg(user.ID, "invalid code")
 	} else {
 		sendMsg(user.ID, "invalid message")
 	}
