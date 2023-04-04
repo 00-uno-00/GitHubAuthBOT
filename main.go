@@ -291,10 +291,8 @@ func handleAccedi(chatID int64, args []string, s *syncMap) {
 			}
 			return
 		}
-		if i == len(REPOS)+1 {
-			sendMsg(chatID, "Repo Invalida")
-		}
 	}
+	sendMsg(chatID, "Repo Invalida")
 }
 
 func hAccessi(chatID int64, s *syncMap) {
