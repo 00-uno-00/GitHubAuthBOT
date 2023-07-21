@@ -44,3 +44,15 @@ should get the bot started.
 - [x] Add function and relative bot command to list all of the owner's repositories the user has access to
 
 - [x] Add 2FA to verify the provided email
+
+- [ ] add addblacklist
+
+- [ ] add delblacklist
+
+- [ ] add addrepository
+
+- [ ] add delrepository
+
+- [ ] add securitylvl
+
+- [ ] add user
