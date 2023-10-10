@@ -22,9 +22,8 @@ type lvl_query struct {
 }
 
 type user_query struct {
-	query      *sql.Stmt
-	user       user
-	query_type int
+	query *sql.Stmt
+	user  user
 }
 
 func setupdb() {
@@ -159,44 +158,56 @@ func execQuerylvl() { //lvl
 	}
 }
 
-func execQueryUser() { //user
-	for query := range user_conns {
-		switch query.query_type {
-		case 0: //set
-			_, err := query.query.Exec(query.user.tgID, query.user.address, query.user.ghusername, query.user.tgusername, query.user.verified, query.user.admin, query.user.access)
-			if err != nil {
-				log.Println("Error inserting user: ", err)
-				log.Fatal(err)
-			}
-		case 1: //verify github(happens only on email verification)
-			_, err := query.query.Exec(query.user.tgID, query.user.address, query.user.ghusername, query.user.verified)
-			if err != nil {
-				log.Println("Error inserting user: ", err)
-				log.Fatal(err)
-			}
-		case 2: //change access
-			_, err := query.query.Exec(query.user.tgID, query.user.access)
-			if err != nil {
-				log.Println("Error updating user: ", err)
-				log.Fatal(err)
-			}
-		case 3: //give/remove admin rights
-			_, err := query.query.Exec(query.user.tgID, query.user.admin)
-			if err != nil {
-				log.Println("Error updating user: ", err)
-				log.Fatal(err)
-			}
-		case 4: //add blacklist
-			if query.user.tgID == 0 {
-				blacklisted_users++
-				query.user.tgID = blacklisted_users
-			}
-			_, err := query.query.Exec(query.user.tgID, query.user.address, query.user.ghusername, query.user.tgusername, query.user.verified, query.user.admin, query.user.access)
-			if err != nil {
-				log.Println("Error updating user: ", err)
-				log.Fatal(err)
-			}
-
-		}
+func set(query user_query) {
+	_, err := query.query.Exec(query.user.tgID, query.user.address, query.user.ghusername, query.user.tgusername, query.user.verified, query.user.admin, query.user.access)
+	if err != nil {
+		log.Println("Error inserting user: ", err)
+		log.Fatal(err)
 	}
+}
+
+func verifyGithub(query user_query) {
+	_, err := query.query.Exec(query.user.tgID, query.user.address, query.user.ghusername, query.user.verified)
+	if err != nil {
+		log.Println("Error inserting user: ", err)
+		log.Fatal(err)
+	}
+}
+
+func changeAccess(query user_query) {
+	_, err := query.query.Exec(query.user.tgID, query.user.access)
+	if err != nil {
+		log.Println("Error updating user: ", err)
+		log.Fatal(err)
+	}
+}
+
+func adminRights(query user_query) {
+	_, err := query.query.Exec(query.user.tgID, query.user.admin)
+	if err != nil {
+		log.Println("Error updating user: ", err)
+		log.Fatal(err)
+	}
+}
+
+func add_blacklist(query user_query) { //rename
+	if query.user.tgID == 0 {
+		blacklisted_users++
+		query.user.tgID = blacklisted_users
+	}
+	_, err := query.query.Exec(query.user.tgID, query.user.address, query.user.ghusername, query.user.tgusername, query.user.verified, query.user.admin, query.user.access)
+	if err != nil {
+		log.Println("Error updating user: ", err)
+		log.Fatal(err)
+	}
+}
+
+func getUser(query user_query) user {
+	var usr user
+	err := query.query.QueryRow(query.user.tgID).Scan(&usr.tgID, &usr.address, &usr.ghusername, &usr.tgusername, &usr.verified, &usr.admin, &usr.access)
+	if err != nil {
+		log.Println("Error getting user: ", err)
+		log.Fatal(err)
+	}
+	return usr
 }

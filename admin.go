@@ -7,12 +7,12 @@ import (
 	"sync"
 )
 
-func admin_hCommand(adminID int64, arguments []string, ud *syncData) {
+func admin_hCommand(adminID int64, arguments []string) {
 	switch arguments[0] {
 	case "addblacklist":
-		addBlacklist(adminID, arguments, ud)
+		addBlacklist(adminID, arguments)
 	case "delblacklist":
-		delBlacklist(adminID, arguments[0], ud)
+		delBlacklist(adminID, arguments[0])
 	case "addrepository":
 		addRepository(adminID, arguments)
 	case "removerepository":
@@ -26,17 +26,25 @@ func admin_hCommand(adminID int64, arguments []string, ud *syncData) {
 	}
 }
 
-func addBlacklist(adminID int64, args []string, ud *syncData) { //args[0] = email, args[1] = ghusername, args[2] = tgusername, args[3] = tgID
+func addBlacklist(adminID int64, args []string) { //args[0] = email, args[1] = ghusername, args[2] = tgusername, args[3] = tgID
 	if len(args) != 4 {
 		sendMsg(adminID, "Invalid number of arguments")
 		return
 	}
-	a4, _ := strconv.ParseInt(args[4], 10, 64)
-	blacklist_entry := user_data{args[1], args[2], args[3], a4}
-	sendMsg(adminID, ud.setData(args[0], blacklist_entry))
+	a4, _ := strconv.ParseInt(args[3], 10, 64)
+	blacklist_entry := user{a4, args[0], args[1], args[2], false, false, "blacklist"}
+	insert, err := db.Prepare("INSERT INTO user (tgID, address, ghusername, tgusername, verified, admin, access) VALUES (?,?,?,?,?,?,?)")
+	if err != nil {
+		log.Println("Error preparing query user: ", err)
+		log.Fatal(err)
+	}
+
+	defer func() {
+		insert.Close()
+	}()
 }
 
-func delBlacklist(adminID int64, email string, ud *syncData) {
+func delBlacklist(adminID int64, email string) {
 	if ud.deleteData(email) {
 		sendMsg(adminID, "data deleted succefully")
 	} else {
