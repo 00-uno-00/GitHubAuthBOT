@@ -45,6 +45,8 @@ should get the bot started.
 
 - [x] Add 2FA to verify the provided email
 
+- [ ] add emailverifier
+
 - [ ] add addblacklist
 
 - [ ] add delblacklist

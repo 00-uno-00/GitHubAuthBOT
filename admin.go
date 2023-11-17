@@ -4,15 +4,16 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func admin_hCommand(adminID int64, arguments []string) {
+func admin_hCommand(adminID int64, arguments []string, ud *syncData) {
 	switch arguments[0] {
 	case "addblacklist":
-		addBlacklist(adminID, arguments)
+		addBlacklist(adminID, arguments, ud)
 	case "delblacklist":
-		delBlacklist(adminID, arguments[0])
+		delBlacklist(adminID, arguments[0], ud)
 	case "addrepository":
 		addRepository(adminID, arguments)
 	case "removerepository":
@@ -26,25 +27,17 @@ func admin_hCommand(adminID int64, arguments []string) {
 	}
 }
 
-func addBlacklist(adminID int64, args []string) { //args[0] = email, args[1] = ghusername, args[2] = tgusername, args[3] = tgID
+func addBlacklist(adminID int64, args []string, ud *syncData) { //args[0] = email, args[1] = ghusername, args[2] = tgusername, args[3] = tgID
 	if len(args) != 4 {
 		sendMsg(adminID, "Invalid number of arguments")
 		return
 	}
-	a4, _ := strconv.ParseInt(args[3], 10, 64)
-	blacklist_entry := user{a4, args[0], args[1], args[2], false, false, "blacklist"}
-	insert, err := db.Prepare("INSERT INTO user (tgID, address, ghusername, tgusername, verified, admin, access) VALUES (?,?,?,?,?,?,?)")
-	if err != nil {
-		log.Println("Error preparing query user: ", err)
-		log.Fatal(err)
-	}
-
-	defer func() {
-		insert.Close()
-	}()
+	a4, _ := strconv.ParseInt(args[4], 10, 64)
+	blacklist_entry := user{tgID: a4, address: args[0], ghusername: args[1], tgusername: args[2], verified: true, admin: false, access: "blacklist"}
+	sendMsg(adminID, ud.setData(args[0], blacklist_entry))
 }
 
-func delBlacklist(adminID int64, email string) {
+func delBlacklist(adminID int64, email string, ud *syncData) {
 	if ud.deleteData(email) {
 		sendMsg(adminID, "data deleted succefully")
 	} else {
@@ -57,13 +50,7 @@ func addRepository(adminID int64, args []string) {
 		sendMsg(adminID, "Invalid number of arguments")
 		return
 	}
-	REPOS = append(REPOS, args[1])
-	lvl, _ := strconv.ParseInt(args[2], 10, 64)
-	for _, v := range LEVELS {
-		if v.lvl <= int(lvl) {
-			v.repos = append(v.repos, args[1])
-		}
-	}
+
 	log.Println("Repository:" + args[2] + " has been added by")
 }
 
@@ -72,18 +59,7 @@ func removeRepository(adminID int64, args []string) {
 		sendMsg(adminID, "Invalid number of arguments")
 		return
 	}
-	for i, a := range REPOS {
-		if a == args[2] {
-			REPOS = append(REPOS[:i-1], REPOS[i+1:]...)
-		}
-	}
-	for _, l := range LEVELS {
-		for i, r := range l.repos {
-			if args[2] == r {
-				l.repos = append(l.repos[:i-1], l.repos[i+1:]...)
-			}
-		}
-	}
+
 	sendMsg(adminID, "Repository:"+args[2]+" has been removed")
 	log.Println("Repository:" + args[2] + " has been removed")
 }
@@ -101,9 +77,14 @@ func addLevel(adminID int64, args []string) { //nome  lvl
 		}
 	}
 
-	int_lvl, _ := strconv.ParseInt(args[1], 10, 64)
-	new_lvl := level{args[0], nil, syncData{map[string]user_data{}, sync.Mutex{}}, int(int_lvl)}
-	LEVELS = append(LEVELS, new_lvl)
+	ql, _, err := sq.Insert("level").Columns("name", "lvl").Values(args[0], args[1]).ToSql()
+
+	if err != nil {
+		log.Println("Error preparing query level: ", err)
+		log.Fatal(err)
+	}
+
+	db.Exec(ql)
 
 	sendMsg(adminID, "Level: "+args[0]+"has been added")
 	log.Println("Level: " + args[0] + "has been added")
@@ -125,6 +106,7 @@ func removeLevel(adminID int64, args []string) {
 	}
 }
 
+/*
 func editLevel(adminID int64, args []string) { // args[0] = attribute to be edited, args[1] = lvl name, args[2] = new attribute
 	if len(args) < 3 {
 		sendMsg(adminID, "Invalid number of arguments")
@@ -144,7 +126,7 @@ func editLevel(adminID int64, args []string) { // args[0] = attribute to be edit
 		sendMsg(adminID, "Unknown case")
 	}
 
-}
+}*/
 
 func editLvlName(adminID int64, args []string) {
 	for _, v := range LEVELS {
