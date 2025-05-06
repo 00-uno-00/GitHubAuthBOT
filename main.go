@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	cr "crypto/rand"
-	"database/sql"
 	"encoding/base64"
 	"errors"
 	"log"
@@ -455,7 +454,7 @@ func sendMsg(chatID int64, msg string) {
 }
 
 func admin_check(user tgbotapi.User) {
-	for i := 0; i < len(ADMINS); i++ {
+	/*for i := 0; i < len(ADMINS); i++ {
 		if user.UserName == ADMINS[i] {
 			admin_user, err := s.get(user.ID)
 			if err != nil {
@@ -465,11 +464,11 @@ func admin_check(user tgbotapi.User) {
 			admin_status := state{true, true, user{admin_user.address, admin_user.ghusername, admin_user.tgusername, admin_user.tgID}}
 			s.set(user.ID, admin_status)
 		}
-	}
+	}*/
 }
 
 func blockUser(client *github.Client, ghusername string) {
-	db, err := sql.Open("sqlite3", "file:database.db?cache=shared&mode=rwc")
+	/*db, err := sql.Open("sqlite3", "file:database.db?cache=shared&mode=rwc")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -481,7 +480,7 @@ func blockUser(client *github.Client, ghusername string) {
 	}
 
 	result, err := db.Prepare("SELECT * FROM repos")
-	var repo string
+	var repo string*/
 }
 
 func emailVerifier() {

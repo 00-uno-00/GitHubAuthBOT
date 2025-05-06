@@ -18,8 +18,8 @@ var (
 		tgusername TEXT,
 		verified BOOLEAN NOT NULL DEFAULT FALSE,
 		admin BOOLEAN NOT NULL DEFAULT FALSE,
-		access TEXT NOT NULL DEFAULT 'pull'
-		levels TEXT NOT NULL DEFAULT '[]'
+		access TEXT NOT NULL DEFAULT 'pull',
+		levels TEXT NOT NULL DEFAULT '[]',
 		FOREIGN KEY (levels) REFERENCES level (name) ON DELETE CASCADE ON UPDATE CASCADE
 		);
 	
