@@ -32,13 +32,13 @@ func addBlacklist(adminID int64, args []string, ud *syncData) { //args[0] = emai
 		sendMsg(adminID, "Invalid number of arguments")
 		return
 	}
-	a4, _ := strconv.ParseInt(args[4], 10, 64)
-	blacklist_entry := user{tgID: a4, address: args[0], ghusername: args[1], tgusername: args[2], verified: true, admin: false, access: "blacklist"}
-	sendMsg(adminID, ud.setData(args[0], blacklist_entry))
+	tgID, _ := strconv.ParseInt(args[3], 10, 64)
+	blacklist_entry := user{tgID: tgID, address: args[0], ghusername: args[1], tgusername: args[2], verified: true, admin: false, access: "blacklist"}
+	sendMsg(adminID, ud.setData(tgID, blacklist_entry))
 }
 
-func delBlacklist(adminID int64, email string, ud *syncData) {
-	if ud.deleteData(email) {
+func delBlacklist(adminID int64, email string, ud *syncData) { //TODO: fix
+	if ud.deleteData(adminID) {
 		sendMsg(adminID, "data deleted succefully")
 	} else {
 		sendMsg(adminID, "couldn't delete data")
@@ -64,7 +64,7 @@ func removeRepository(adminID int64, args []string) {
 	log.Println("Repository:" + args[2] + " has been removed")
 }
 
-func addLevel(adminID int64, args []string) { //nome  lvl
+func addLevel(adminID int64, args []string) { //nome  lvl we use manageDB as a controller
 	if len(args) < 3 {
 		sendMsg(adminID, "Invalid number of arguments")
 		return
@@ -76,15 +76,6 @@ func addLevel(adminID int64, args []string) { //nome  lvl
 			return
 		}
 	}
-
-	ql, _, err := sq.Insert("level").Columns("name", "lvl").Values(args[0], args[1]).ToSql()
-
-	if err != nil {
-		log.Println("Error preparing query level: ", err)
-		log.Fatal(err)
-	}
-
-	db.Exec(ql)
 
 	sendMsg(adminID, "Level: "+args[0]+"has been added")
 	log.Println("Level: " + args[0] + "has been added")
