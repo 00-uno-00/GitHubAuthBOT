@@ -71,12 +71,21 @@ func editUser(db *sqlx.DB, usr user) {
 
 func getUser(db *sqlx.DB, tgID int64) (user, error) {
 	var usr user
-	err := db.Get(&usr, db.Rebind("SELECT * FROM user WHERE tgID = ?"), tgID)
+	db, err := sqlx.Open("sqlite3", "./database.db") //creates db file if it doesn't exist
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = db.Select(&usr, "SELECT * FROM user") // WHERE tgID=$1", tgID)
+	/*tx := db.MustBegin()
+	usr, err := tx.Exec(tx.Rebind("SELECT * FROM user WHERE tgID = ?"), tgID)
+	tx.Commit()*/
 	if err != nil {
 		return user{}, err
 	}
 
-	return usr, nil
+	//print(usr)
+	return user{}, nil
 }
 
 func getLevels(db *sqlx.DB, tgID int64) ([]level, error) {

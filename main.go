@@ -427,7 +427,7 @@ func auth(usr tgbotapi.User, args []string, h *syncHash, ud *syncData) bool { //
 	ch <- mailCreator(usr.ID, code, ud)
 
 	sendMsg(usr.ID, "Ti è stata inviata una mail con il codice di verifica")
-	for {
+	for { //potrebbe bloccarsi nel caso in cui l'utente non verifichi cap 12 utenti
 		local_user, _ := ud.getData(usr.ID)
 		if local_user.verified {
 			log.Println("user verified: " + local_user.ghusername)
